@@ -1,5 +1,5 @@
 [package]
-name = "dither"
+name = "ditherer"
 version = "0.1.0"
 edition = "2021"
 
