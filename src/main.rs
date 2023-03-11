@@ -2,10 +2,15 @@
 mod dither;
 use dither::ordered_dither;
 
+mod view;
+
 use image::{Rgba, ImageBuffer, imageops, SubImage, GenericImageView};
 use std::iter::Filter;
 use std::{env, process::exit};
 use std::path::Path;
+use sdl2::event::{Event};
+
+use sdl2::keyboard::Keycode;
 // use std::ffi::OsStr;
 
 #[non_exhaustive]
@@ -33,6 +38,8 @@ fn main() {
     let input_path_string: &str;
     let output_path_string: &str;
     let usage_string = "usage: dither [input] [output] [detail level] [darkness]";
+
+    let mut view = view::create();
     
     if args.len() > 2{
         input_path_string = &args[1];
@@ -53,28 +60,52 @@ fn main() {
     let extension = path.extension().unwrap();
 
     let original = image::open(input_path_string).expect("Failed to open input image").into_rgba8();
-    let mut clone = original.clone();
     let (w, h) = original.dimensions();
     
 
-   
-    // let resampled = imageops::resize(&original, original.width()/2, original.height()/2, imageops::FilterType::Nearest);
-    let zf = 16;
-    println!("{} {} {} {}", w/zf, h/zf, w*(zf-2)/zf, h*(zf-2)/zf);
-    
+
     let resampled = &original;
     let dithered_image = ordered_dither(&resampled, bayer_level, darkness);
     let output = imageops::resize(&dithered_image, original.width(), original.height(), imageops::FilterType::Nearest);
     // let dithered_filename: String = file_stem.to_str().unwrap().to_owned() + "-dithered." + extension.to_str().unwrap();
     output.save(output_path_string).expect("Failed to save image");
 
-    // let cropped = imageops::crop(&mut clone, w/8, w/8, w*7/8, h*7/8).to_image();
-    
-    // let cropped = SubImage::new(&original, w/zf, h/zf, w*zf-2/zf, h*zf-2/zf).to_image();
+    let zf = 8;
     let cropped = GenericImageView::view(&original, w/zf, h/zf, w*(zf-2)/zf, h*(zf-2)/zf).to_image();
-   let cropped_resize = imageops::resize(&cropped, w + w/zf, h + h/zf, imageops::FilterType::Nearest);
-   ordered_dither(&cropped_resize, bayer_level, darkness).save("cropped.png").expect("fail crop");
+    let cropped_resize = imageops::resize(&cropped, w + w/zf, h + h/zf, imageops::FilterType::Nearest);
+    ordered_dither(&cropped_resize, bayer_level, darkness).save("cropped.png").expect("fail crop");
 
+
+    let mut event_pump = view.context.event_pump().unwrap();
+    let mut z = 16;
+    let mut t = 0;
+    loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::KeyDown { timestamp , window_id, keycode, scancode, keymod, repeat } => {
+                    let key = keycode.unwrap();
+                    println!("{:?}", keycode);
+                    if key == Keycode::J {
+                        z -= 2;
+                    } else if key == Keycode::K {
+                        z += 2;
+                    }
+                },
+                Event::Quit { timestamp }=> {
+                    exit(0);
+                }
+                _ => {}
+            }
+        }
+        
+        t += 1;
+        z = ((t as f32/60.0).sin() * 150.0) as u32;
+        let cropped = GenericImageView::view(&original, z, z, w - z , h - z).to_image();
+        let cropped_resize = imageops::resize(&cropped, original.width(), original.height(), imageops::FilterType::Nearest);
+        view.draw_image(&ordered_dither(&cropped_resize, bayer_level, darkness));
+       
+        // std::thread::sleep(std::time::Duration::from_millis(16));
+    }
 
     println!("\n\x1b[92msaved dithered image to: {} \x1b[0m", output_path_string);
 }
