@@ -50,14 +50,14 @@ pub fn create(width: u32, height: u32) -> View {
     let video_subsystem = sdl_context.video().unwrap();
 
     
-    let window = video_subsystem.window("rust-sdl2 demo", width, height)
+    let window = video_subsystem.window("ditherer", width, height)
         .position_centered()
         .build()
         .unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
 
-    canvas.set_draw_color(Color::RGB(0, 255, 255));
+    canvas.set_draw_color(Color::RGB(255, 255, 255));
     canvas.clear();
     canvas.present();
 

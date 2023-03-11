@@ -1,17 +1,17 @@
 #![allow(dead_code, unused_variables)]
+
+use std::{env, process::exit};
+use std::path::Path;
+use std::time::{Instant, Duration};
+
+use image::{Rgba, imageops, GenericImageView};
+use sdl2::event::{Event};
+use sdl2::keyboard::Keycode;
+
 mod dither;
 use dither::ordered_dither;
 
 mod view;
-
-use image::{Rgba, ImageBuffer, imageops, SubImage, GenericImageView};
-use std::iter::Filter;
-use std::{env, process::exit};
-use std::path::Path;
-use sdl2::event::{Event};
-
-use sdl2::keyboard::Keycode;
-// use std::ffi::OsStr;
 
 #[non_exhaustive]
 struct Colors;
@@ -66,53 +66,83 @@ fn main() {
 
     let resampled = &original;
     let dithered_image = ordered_dither(&resampled, bayer_level, darkness);
-    let output = imageops::resize(&dithered_image, original.width(), original.height(), imageops::FilterType::Nearest);
+    let output = dithered_image;
+    // let output = imageops::resize(&dithered_image, original.width(), original.height(), imageops::FilterType::Nearest);
     // let dithered_filename: String = file_stem.to_str().unwrap().to_owned() + "-dithered." + extension.to_str().unwrap();
     output.save(output_path_string).expect("Failed to save image");
 
-    let zf = 8;
-    let cropped = GenericImageView::view(&original, w/zf, h/zf, w*(zf-2)/zf, h*(zf-2)/zf).to_image();
-    let cropped_resize = imageops::resize(&cropped, w + w/zf, h + h/zf, imageops::FilterType::Nearest);
-    ordered_dither(&cropped_resize, bayer_level, darkness).save("cropped.png").expect("fail crop");
-
 
     let mut event_pump = view.context.event_pump().unwrap();
-    let mut z = 16;
+    let mut z = 0;
     let mut t = 0;
     let diag_theta = (w as f32 / h as f32).atan();
-    loop {
+
+    let timer = Instant::now();
+    let mut last = Duration::from_millis(0);
+    let mut framecount: u32 = 0;
+    let fps_update_interval = 30;
+
+    let mouse_sens = 4;
+
+
+    'running: loop {
+        let mut save = false;
         for event in event_pump.poll_iter() {
             match event {
                 Event::KeyDown { timestamp , window_id, keycode, scancode, keymod, repeat } => {
                     let key = keycode.unwrap();
-                    println!("{:?}", keycode);
-                    if key == Keycode::J {
-                        z -= 2;
-                    } else if key == Keycode::K {
-                        z += 2;
+                    match key {
+                        Keycode::Q => { break 'running},
+
+                        Keycode::J => {z += mouse_sens},
+                        Keycode::K => {if z + mouse_sens > 0 {z -= mouse_sens}},
+
+                        Keycode::O => {darkness += 0.01},
+                        Keycode::P => {darkness -= 0.01},
+
+                        Keycode::S => {save = true}
+
+                        Keycode::Num1 => {bayer_level = 1},
+                        Keycode::Num2 => {bayer_level = 2},
+                        Keycode::Num3 => {bayer_level = 3},
+                        _ => {}
                     }
                 },
+                Event::MouseWheel { timestamp, window_id, which, x, y, direction } => {
+                    // println!("mouse wheel: {} {}", y, direction)
+                    z += mouse_sens*y;
+                },
                 Event::Quit { timestamp }=> {
-                    exit(0);
+                    break 'running;
                 }
                 _ => {}
             }
         }
         
         t += 1;
-        z = ((t as f32/60.0).sin() * 150.0) as u32;
+        // z = (((t as f32/60.0).sin() + 1.0) * 50.0) as u32;
 
         let nx = (z as f32 * diag_theta.sin()) as u32;
         let ny = (z as f32 * diag_theta.cos()) as u32;
 
         let cropped = GenericImageView::view(&original, nx, ny, w - 2*nx , h - 2*ny).to_image();
         let cropped_resize = imageops::resize(&cropped, original.width(), original.height(), imageops::FilterType::Nearest);
-        view.draw_image(&ordered_dither(&cropped_resize, bayer_level, darkness));
-       
-        // std::thread::sleep(std::time::Duration::from_millis(16));
+        let dithered = &ordered_dither(&cropped_resize, bayer_level, darkness);
+        view.draw_image(dithered);
+        if save {
+            dithered.save(output_path_string).expect("error: could not save dithered image");
+            println!("saved to: {}", output_path_string)
+        }
+        
+        framecount += 1;
+        if framecount % fps_update_interval == 0 {
+            let elapsed = timer.elapsed();
+            let frametime = elapsed - last;
+            last = elapsed;
+            // println!("fps: {:.2}", fps_update_interval as f32/(frametime.as_millis() as f32/1000.0));
+        }
     }
 
-    println!("\n\x1b[92msaved dithered image to: {} \x1b[0m", output_path_string);
 }
 
 // https://www.includehelp.com/rust/reverse-bits-of-a-binary-number.aspx
