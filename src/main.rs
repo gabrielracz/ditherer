@@ -1,8 +1,16 @@
-#![allow(dead_code)]
+#![allow(dead_code, unused_variables)]
+mod dither;
+use dither::ordered_dither;
 
-use image::{Rgba, ImageBuffer, imageops};
+mod view;
+
+use image::{Rgba, ImageBuffer, imageops, SubImage, GenericImageView};
+use std::iter::Filter;
 use std::{env, process::exit};
 use std::path::Path;
+use sdl2::event::{Event};
+
+use sdl2::keyboard::Keycode;
 // use std::ffi::OsStr;
 
 #[non_exhaustive]
@@ -23,60 +31,6 @@ macro_rules! _constfor {
     };
 }
 
-struct Bayer;
-impl Bayer {
-    pub const _L1: &'static[&'static[f32]] = &[
-        &[0.0/4.0, 2.0/4.0],
-        &[3.0/4.0, 1.0/4.0]
-    ];
-    pub const _L2: &'static[&'static[f32]] = &[
-        &[ 0.0/16.0,  8.0/16.0,  2.0/16.0, 10.0/16.0],
-        &[12.0/16.0,  4.0/16.0, 14.0/16.0,  6.0/16.0],
-        &[ 3.0/16.0, 11.0/16.0,  1.0/16.0,  9.0/16.0],
-        &[15.0/16.0,  7.0/16.0, 13.0/16.0,  5.0/16.0]
-    ];
-    pub const _L3: &'static[&'static[f32]] = &[
-        &[ 0.0/64.0, 32.0/64.0,  8.0/64.0, 40.0/64.0,  2.0/64.0, 34.0/64.0, 10.0/64.0, 42.0/64.0],
-        &[48.0/64.0, 16.0/64.0, 56.0/64.0, 24.0/64.0, 50.0/64.0, 18.0/64.0, 58.0/64.0, 26.0/64.0],
-        &[12.0/64.0, 44.0/64.0,  4.0/64.0, 36.0/64.0, 14.0/64.0, 46.0/64.0,  6.0/64.0, 38.0/64.0],
-        &[60.0/64.0, 28.0/64.0, 52.0/64.0, 20.0/64.0, 62.0/64.0, 30.0/64.0, 54.0/64.0, 22.0/64.0],
-        &[ 3.0/64.0, 35.0/64.0, 11.0/64.0, 43.0/64.0,  1.0/64.0, 33.0/64.0,  9.0/64.0, 41.0/64.0],
-        &[51.0/64.0, 19.0/64.0, 59.0/64.0, 27.0/64.0, 49.0/64.0, 17.0/64.0, 57.0/64.0, 25.0/64.0],
-        &[15.0/64.0, 47.0/64.0,  7.0/64.0, 49.0/64.0, 13.0/64.0, 45.0/64.0,  5.0/64.0, 37.0/64.0],
-        &[63.0/64.0, 31.0/64.0, 55.0/64.0, 23.0/64.0, 61.0/64.0, 29.0/64.0, 53.0/64.0, 21.0/64.0]
-    ];
-}
-
-
-
-fn ordered_dither(image: &ImageBuffer<Rgba<u8>, Vec<u8>>, level: i32, darkness: f32) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
-    let kernel: &[&[f32]];
-    match level {
-        1 => {kernel = Bayer::_L1},
-        2 => {kernel = Bayer::_L2},
-        3 => {kernel = Bayer::_L3},
-        _ => {kernel = Bayer::_L2}
-    }
-
-    let mut result: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(image.width(), image.height());
-    for x in 0..image.width() {
-        for y in 0..image.height() {
-            let p = image.get_pixel(x, y);
-            let intensity: f32 = (p[0] as u32 + p[1] as u32 + p[2] as u32) as f32/(3.0f32*255.0f32);
-            let threshhold = kernel[x as usize%kernel.len()][y as usize %kernel.len()] + darkness;
-
-            let dithered: Rgba<u8>;
-            if intensity > threshhold {
-                dithered = Colors::WHITE;
-            } else {
-                dithered = Colors::BLACK;
-            }
-            result.put_pixel(x, y, dithered);
-        }
-    }
-    return result;
-}
-
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut bayer_level: i32 = 2;
@@ -84,6 +38,8 @@ fn main() {
     let input_path_string: &str;
     let output_path_string: &str;
     let usage_string = "usage: dither [input] [output] [detail level] [darkness]";
+
+    
     
     if args.len() > 2{
         input_path_string = &args[1];
@@ -104,14 +60,59 @@ fn main() {
     let extension = path.extension().unwrap();
 
     let original = image::open(input_path_string).expect("Failed to open input image").into_rgba8();
-    // let resampled = imageops::resize(&original, original.width()/2, original.height()/2, imageops::FilterType::Nearest);
+    let (w, h) = original.dimensions();
+    
+    let mut view = view::create(w, h);
+
     let resampled = &original;
     let dithered_image = ordered_dither(&resampled, bayer_level, darkness);
     let output = imageops::resize(&dithered_image, original.width(), original.height(), imageops::FilterType::Nearest);
-
-    let dithered_filename: String = file_stem.to_str().unwrap().to_owned() + "-dithered." + extension.to_str().unwrap();
+    // let dithered_filename: String = file_stem.to_str().unwrap().to_owned() + "-dithered." + extension.to_str().unwrap();
     output.save(output_path_string).expect("Failed to save image");
-    println!("Saved dithered image to: {}", dithered_filename);
+
+    let zf = 8;
+    let cropped = GenericImageView::view(&original, w/zf, h/zf, w*(zf-2)/zf, h*(zf-2)/zf).to_image();
+    let cropped_resize = imageops::resize(&cropped, w + w/zf, h + h/zf, imageops::FilterType::Nearest);
+    ordered_dither(&cropped_resize, bayer_level, darkness).save("cropped.png").expect("fail crop");
+
+
+    let mut event_pump = view.context.event_pump().unwrap();
+    let mut z = 16;
+    let mut t = 0;
+    let diag_theta = (w as f32 / h as f32).atan();
+    loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::KeyDown { timestamp , window_id, keycode, scancode, keymod, repeat } => {
+                    let key = keycode.unwrap();
+                    println!("{:?}", keycode);
+                    if key == Keycode::J {
+                        z -= 2;
+                    } else if key == Keycode::K {
+                        z += 2;
+                    }
+                },
+                Event::Quit { timestamp }=> {
+                    exit(0);
+                }
+                _ => {}
+            }
+        }
+        
+        t += 1;
+        z = ((t as f32/60.0).sin() * 150.0) as u32;
+
+        let nx = (z as f32 * diag_theta.sin()) as u32;
+        let ny = (z as f32 * diag_theta.cos()) as u32;
+
+        let cropped = GenericImageView::view(&original, nx, ny, w - 2*nx , h - 2*ny).to_image();
+        let cropped_resize = imageops::resize(&cropped, original.width(), original.height(), imageops::FilterType::Nearest);
+        view.draw_image(&ordered_dither(&cropped_resize, bayer_level, darkness));
+       
+        // std::thread::sleep(std::time::Duration::from_millis(16));
+    }
+
+    println!("\n\x1b[92msaved dithered image to: {} \x1b[0m", output_path_string);
 }
 
 // https://www.includehelp.com/rust/reverse-bits-of-a-binary-number.aspx
