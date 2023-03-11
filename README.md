@@ -19,3 +19,4 @@ Make sure your browser is on 100% zoom to appreciate the single-pixel glory.
 ![old-man-willow](results/old-man-willow.png)
 ![787B](results/787B.png)
 ![balrog](results/balrog.png)
+![treehopper](results/treehopper.png)
