@@ -1,7 +1,8 @@
-# Ditherer
+# Image Ditherer
 
 ### Installation
-- Install sdl2 library ([follow the instructions here](https://github.com/Rust-SDL2/rust-sdl2))
+- Install Rust ([instructions](https://doc.rust-lang.org/book/ch01-01-installation.html))
+- Install sdl2 lib ([instructions](https://github.com/Rust-SDL2/rust-sdl2))
 - `git clone https://github.com/gabrielracz/ditherer.git && cd ditherer`
 - `cargo build --release`
 
@@ -12,7 +13,7 @@
 - `1`, `2`, and `3` to select detail level (bayer matrix size)
 - `s` to save
 
- \
+
  ### Samples
 Make sure your browser is on 100% zoom to appreciate the single-pixel glory.
 ![old-man-willow](results/old-man-willow.png)
