@@ -1,0 +1,18 @@
+thread 'main' panicked at 'Image index (602, 41) out of bounds (602, 334)', C:\Users\Gabi\.cargo\registry\src\github.com-1ecc6299db9ec823\image-0.24.5\./src\buffer.rs:769:21
+stack backtrace:
+   0: std::panicking::begin_panic_handler
+             at /rustc/2c8cc343237b8f7d5a3c3703e3a87f2eb2c54a74/library\std\src\panicking.rs:575
+   1: core::panicking::panic_fmt
+             at /rustc/2c8cc343237b8f7d5a3c3703e3a87f2eb2c54a74/library\core\src\panicking.rs:64
+   2: image::buffer_::ImageBuffer<image::color::Rgba<u8>,alloc::vec::Vec<u8,alloc::alloc::Global> >::get_pixel<image::color::Rgba<u8>,alloc::vec::Vec<u8,alloc::alloc::Global> >      
+             at C:\Users\Gabi\.cargo\registry\src\github.com-1ecc6299db9ec823\image-0.24.5\src\buffer.rs:769
+   3: image::buffer_::impl$45::get_pixel<image::color::Rgba<u8>,alloc::vec::Vec<u8,alloc::alloc::Global> >
+             at C:\Users\Gabi\.cargo\registry\src\github.com-1ecc6299db9ec823\image-0.24.5\src\buffer.rs:1155
+   4: image::image::SubImage<ref$<image::buffer_::ImageBuffer<image::color::Rgba<u8>,alloc::vec::Vec<u8,alloc::alloc::Global> > > >::to_image<ref$<image::buffer_::ImageBuffer<image::color::Rgba<u8>,alloc::vec::Vec<u8,alloc::alloc::Global> > > >
+             at C:\Users\Gabi\.cargo\registry\src\github.com-1ecc6299db9ec823\image-0.24.5\src\image.rs:1164
+   5: ditherer::main
+             at .\src\main.rs:121
+   6: core::ops::function::FnOnce::call_once<void (*)(),tuple$<> >
+             at /rustc/2c8cc343237b8f7d5a3c3703e3a87f2eb2c54a74\library\core\src\ops\function.rs:250
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.    
+error: process didn't exit successfully: `target\debug\ditherer.exe 787b.orig.png 787b-dith.png` (exit code: 101)

@@ -1,6 +1,7 @@
-#![allow(dead_code)]
+#![allow(dead_code, unused_variables)]
 
-use image::{Rgba, ImageBuffer, imageops};
+use image::{Rgba, ImageBuffer, imageops, SubImage, GenericImageView};
+use std::iter::Filter;
 use std::{env, process::exit};
 use std::path::Path;
 // use std::ffi::OsStr;
@@ -104,14 +105,30 @@ fn main() {
     let extension = path.extension().unwrap();
 
     let original = image::open(input_path_string).expect("Failed to open input image").into_rgba8();
+    let mut clone = original.clone();
+    let (w, h) = original.dimensions();
+    
+
+   
     // let resampled = imageops::resize(&original, original.width()/2, original.height()/2, imageops::FilterType::Nearest);
+    let zf = 16;
+    println!("{} {} {} {}", w/zf, h/zf, w*(zf-2)/zf, h*(zf-2)/zf);
+    
     let resampled = &original;
     let dithered_image = ordered_dither(&resampled, bayer_level, darkness);
     let output = imageops::resize(&dithered_image, original.width(), original.height(), imageops::FilterType::Nearest);
-
-    let dithered_filename: String = file_stem.to_str().unwrap().to_owned() + "-dithered." + extension.to_str().unwrap();
+    // let dithered_filename: String = file_stem.to_str().unwrap().to_owned() + "-dithered." + extension.to_str().unwrap();
     output.save(output_path_string).expect("Failed to save image");
-    println!("Saved dithered image to: {}", dithered_filename);
+
+    // let cropped = imageops::crop(&mut clone, w/8, w/8, w*7/8, h*7/8).to_image();
+    
+    // let cropped = SubImage::new(&original, w/zf, h/zf, w*zf-2/zf, h*zf-2/zf).to_image();
+    let cropped = GenericImageView::view(&original, w/zf, h/zf, w*(zf-2)/zf, h*(zf-2)/zf).to_image();
+   let cropped_resize = imageops::resize(&cropped, w + w/zf, h + h/zf, imageops::FilterType::Nearest);
+   ordered_dither(&cropped_resize, bayer_level, darkness).save("cropped.png").expect("fail crop");
+
+
+    println!("\n\x1b[92msaved dithered image to: {} \x1b[0m", output_path_string);
 }
 
 // https://www.includehelp.com/rust/reverse-bits-of-a-binary-number.aspx
