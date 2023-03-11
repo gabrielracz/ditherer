@@ -39,7 +39,7 @@ fn main() {
     let output_path_string: &str;
     let usage_string = "usage: dither [input] [output] [detail level] [darkness]";
 
-    let mut view = view::create();
+    
     
     if args.len() > 2{
         input_path_string = &args[1];
@@ -62,7 +62,7 @@ fn main() {
     let original = image::open(input_path_string).expect("Failed to open input image").into_rgba8();
     let (w, h) = original.dimensions();
     
-
+    let mut view = view::create(w, h);
 
     let resampled = &original;
     let dithered_image = ordered_dither(&resampled, bayer_level, darkness);
@@ -79,6 +79,7 @@ fn main() {
     let mut event_pump = view.context.event_pump().unwrap();
     let mut z = 16;
     let mut t = 0;
+    let diag_theta = (w as f32 / h as f32).atan();
     loop {
         for event in event_pump.poll_iter() {
             match event {
@@ -100,7 +101,11 @@ fn main() {
         
         t += 1;
         z = ((t as f32/60.0).sin() * 150.0) as u32;
-        let cropped = GenericImageView::view(&original, z, z, w - z , h - z).to_image();
+
+        let nx = (z as f32 * diag_theta.sin()) as u32;
+        let ny = (z as f32 * diag_theta.cos()) as u32;
+
+        let cropped = GenericImageView::view(&original, nx, ny, w - 2*nx , h - 2*ny).to_image();
         let cropped_resize = imageops::resize(&cropped, original.width(), original.height(), imageops::FilterType::Nearest);
         view.draw_image(&ordered_dither(&cropped_resize, bayer_level, darkness));
        
