@@ -99,6 +99,7 @@ fn main() {
 
                         Keycode::O => {darkness += 0.01},
                         Keycode::P => {darkness -= 0.01},
+                        Keycode::Num0 => {darkness = 0.0; bayer_level = 2; z = 0}
 
                         Keycode::S => {save = true}
 
