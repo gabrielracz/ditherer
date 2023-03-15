@@ -33,7 +33,7 @@ impl Bayer {
 
 
 
-pub fn ordered_dither(image: &ImageBuffer<Rgba<u8>, Vec<u8>>, level: i32, darkness: f32) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
+pub fn ordered_dither(image: &ImageBuffer<Rgba<u8>, Vec<u8>>, level: i32, darkness: f32, inverted: bool) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     let kernel: &[&[f32]];
     match level {
         1 => {kernel = Bayer::_L1},
@@ -42,12 +42,13 @@ pub fn ordered_dither(image: &ImageBuffer<Rgba<u8>, Vec<u8>>, level: i32, darkne
         _ => {kernel = Bayer::_L2}
     }
 
+    let multiplier: f32 = if inverted {-1.0} else {1.0};
     let mut result: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(image.width(), image.height());
     for x in 0..image.width() {
         for y in 0..image.height() {
             let p = image.get_pixel(x, y);
-            let intensity: f32 = (p[0] as u32 + p[1] as u32 + p[2] as u32) as f32/(3.0f32*255.0f32);
-            let threshhold = kernel[x as usize%kernel.len()][y as usize %kernel.len()] + darkness;
+            let intensity: f32 = multiplier * (p[0] as u32 + p[1] as u32 + p[2] as u32) as f32/(3.0f32*255.0f32);
+            let threshhold = multiplier * kernel[x as usize%kernel.len()][y as usize %kernel.len()] + darkness;
 
             let dithered: Rgba<u8>;
             if intensity > threshhold {

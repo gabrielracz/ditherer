@@ -35,6 +35,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let mut bayer_level: i32 = 2;
     let mut darkness: f32 = 0.0;
+    let mut inverted: bool = false;
     let input_path_string: &str;
     let output_path_string: &str;
     let usage_string = "usage: dither [input] [output] [detail level] [darkness]";
@@ -65,7 +66,7 @@ fn main() {
     let mut view = view::create(w, h);
 
     let resampled = &original;
-    let dithered_image = ordered_dither(&resampled, bayer_level, darkness);
+    let dithered_image = ordered_dither(&resampled, bayer_level, darkness, inverted);
     let output = dithered_image;
     // let output = imageops::resize(&dithered_image, original.width(), original.height(), imageops::FilterType::Nearest);
     // let dithered_filename: String = file_stem.to_str().unwrap().to_owned() + "-dithered." + extension.to_str().unwrap();
@@ -99,6 +100,7 @@ fn main() {
 
                         Keycode::O => {darkness += 0.01},
                         Keycode::P => {darkness -= 0.01},
+                        Keycode::I => {inverted = !inverted}
                         Keycode::Num0 => {darkness = 0.0; bayer_level = 2; z = 0}
 
                         Keycode::S => {save = true}
@@ -128,7 +130,7 @@ fn main() {
 
         let cropped = GenericImageView::view(&original, nx, ny, w - 2*nx , h - 2*ny).to_image();
         let cropped_resize = imageops::resize(&cropped, original.width(), original.height(), imageops::FilterType::Nearest);
-        let dithered = &ordered_dither(&cropped_resize, bayer_level, darkness);
+        let dithered = &ordered_dither(&cropped_resize, bayer_level, darkness, inverted);
         view.draw_image(dithered);
         if save {
             dithered.save(output_path_string).expect("error: could not save dithered image");

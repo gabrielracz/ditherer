@@ -1,5 +1,5 @@
 extern crate sdl2;
-use sdl2::{pixels::Color, video};
+use sdl2::{pixels::Color};
 use sdl2::video::Window;
 use sdl2::render::Canvas;
 use sdl2::rect::Point;
