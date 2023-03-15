@@ -10,6 +10,7 @@
 - `./target/release/ditherer path/to/input/image path/to/output`
 - mouse wheel or `j` and `k` to zoom
 - `o` and `p` to adjust darkness
+- `i` to invert color
 - `1`, `2`, and `3` to select detail level (bayer matrix size)
 - `s` to save
 
